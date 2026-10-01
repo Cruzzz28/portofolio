@@ -12,9 +12,19 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^7.3.5"
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.3.5",
+    "qrcode": "^1.5.4",
+    "simple-icons": "^16.33.0",
+    "tailwindcss": "^4.3.3",
+    "three": "^0.186.1"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
   }
 }

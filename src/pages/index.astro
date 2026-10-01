@@ -1,11 +1,238 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Layout from "../layouts/Layout.astro";
+import StackIcon from "../components/StackIcon.astro";
+import ProjectCards from "../components/ProjectCards.astro";
+import Backdrop from "../components/Backdrop.astro";
+import PhotoFrame from "../components/PhotoFrame.astro";
+import { profile } from "../data/profile.js";
+import { techStack, creative } from "../data/stack.js";
+import { awards } from "../data/awards.js";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const menu = [
+  { href: "#home", label: "Home" },
+  { href: "#tentang", label: "Tentang Saya" },
+  { href: "#stack", label: "Creative & Tech" },
+  { href: "#proyek", label: "Proyek" },
+  { href: "#awards", label: "Awards" },
+  { href: "#kontak", label: "Kontak" },
+];
 ---
 
 <Layout>
-	<Welcome />
+  <Backdrop />
+
+  <!-- Navbar -->
+  <header class="fixed inset-x-0 top-0 z-30 border-b border-white/5 bg-black/60 backdrop-blur-md">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+      <a href="#home" class="flex items-center gap-2 font-bold">
+        <svg width="28" height="28" viewBox="0 0 120 120" aria-hidden="true"><polygon points="60,4 110,32 110,88 60,116 10,88 10,32" fill="#22d3ee" /><polygon points="60,18 98,40 98,80 60,102 22,80 22,40" fill="#0b1026" /></svg>
+        <span class="hidden sm:inline lg:hidden xl:inline">{profile.nama}</span>
+      </a>
+
+      <!-- Menu desktop -->
+      <div class="hidden items-center gap-6 text-sm text-slate-300 lg:flex">
+        {menu.map((m) => <a href={m.href} data-nav class="transition hover:text-white">{m.label}</a>)}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="/ar" class="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300">Mode AR</a>
+        <!-- Menu HP -->
+        <button id="menu-btn" class="grid h-10 w-10 place-items-center rounded-full border border-white/15 lg:hidden" aria-label="Buka menu" aria-expanded="false">
+          <span class="text-lg">☰</span>
+        </button>
+      </div>
+    </nav>
+    <div id="mobile-menu" class="hidden border-t border-white/5 px-5 pb-5 lg:hidden">
+      {menu.map((m) => <a href={m.href} class="block border-b border-white/5 py-3 text-slate-200">{m.label}</a>)}
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= HOME ================= -->
+    <section id="home" class="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-5 pt-28 pb-16 lg:grid-cols-[1fr_1.15fr]">
+      <div>
+        <p class="mb-4 inline-block rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-cyan-300">Portofolio · Kartu Nama AR</p>
+        <h1 class="mb-3 text-5xl font-bold leading-tight md:text-7xl">{profile.nama}</h1>
+        <h2 class="mb-6 text-xl text-cyan-300 md:text-2xl">{profile.peran}</h2>
+        <p class="mb-8 max-w-md text-slate-300">
+          Kartu nama ini bukan gambar biasa. Scan dengan kamera HP, dan hologram saya beserta proyek-proyek saya akan muncul di atasnya.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="/ar" class="rounded-full bg-white px-6 py-3 font-semibold text-slate-950 transition hover:scale-105">📷 Coba Mode AR</a>
+          <a href="#proyek" class="rounded-full border border-white/20 px-6 py-3 font-semibold transition hover:bg-white/10">Lihat Proyek</a>
+        </div>
+      </div>
+
+      <div>
+        <div id="card" class="card3d relative overflow-hidden rounded-2xl shadow-2xl shadow-cyan-500/20 ring-1 ring-white/10">
+          <img src="/ar/kartu-ar.png" alt={`Kartu nama AR ${profile.nama}`} width="1400" height="800" class="block w-full" />
+          <div class="shine pointer-events-none absolute inset-0"></div>
+          <div class="scanline pointer-events-none absolute inset-x-0 h-16"></div>
+        </div>
+        <div class="mt-6 flex items-center gap-5 rounded-2xl border border-white/10 bg-[#0b0d14]/90 p-5 backdrop-blur">
+          <canvas id="qr" class="hidden h-28 w-28 shrink-0 rounded-lg bg-white md:block"></canvas>
+          <ol class="space-y-1.5 text-sm text-slate-300">
+            <li class="hidden md:block"><b class="text-white">1.</b> Scan QR ini dengan kamera HP-mu</li>
+            <li class="hidden md:block"><b class="text-white">2.</b> Ketuk <i>Mulai Kamera</i>, lalu arahkan HP ke kartu di layar ini</li>
+            <li class="md:hidden">Buka <a href="/ar" class="text-cyan-300 underline">Mode AR</a>, lalu arahkan kamera ke kartu yang tampil di layar lain atau kartu cetak.</li>
+            <li class="pt-1"><a href="/ar/kartu-ar.png" download="kartu-ar.png" class="text-cyan-300 underline-offset-4 hover:underline">⬇ Unduh kartu untuk dicetak</a></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TENTANG SAYA ================= -->
+    <section id="tentang" class="reveal mx-auto max-w-6xl scroll-mt-24 px-5 py-24">
+      <div class="grid items-center gap-10 rounded-3xl border border-white/10 bg-[#0b0d14]/90 p-8 backdrop-blur md:grid-cols-[300px_1fr] md:gap-16 md:p-14">
+        <PhotoFrame />
+        <div>
+          <p class="mb-2 text-xs uppercase tracking-[0.3em] text-cyan-300">Tentang Saya</p>
+          <h2 class="mb-5 text-3xl font-bold md:text-4xl">Halo, saya {profile.nama.split(" ")[0]} 👋</h2>
+          <p class="mb-8 leading-relaxed text-slate-300">{profile.tentang}</p>
+          <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <div class="rounded-2xl border border-white/5 bg-white/3 p-4"><dt class="text-slate-400">Lokasi</dt><dd class="font-semibold">{profile.lokasi}</dd></div>
+            <div class="rounded-2xl border border-white/5 bg-white/3 p-4"><dt class="text-slate-400">Peran</dt><dd class="font-semibold">{profile.peran}</dd></div>
+            <div class="rounded-2xl border border-white/5 bg-white/3 p-4"><dt class="text-slate-400">Status</dt><dd class="font-semibold text-emerald-300">● Terbuka kerja</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CREATIVE & TECH STACK ================= -->
+    <section id="stack" class="reveal mx-auto max-w-6xl scroll-mt-24 px-5 py-24">
+      <p class="mb-2 text-xs uppercase tracking-[0.3em] text-cyan-300">Keahlian</p>
+      <h2 class="mb-10 text-3xl font-bold md:text-4xl">Creative &amp; Tech Stack</h2>
+
+      <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <!-- Tech Stack -->
+        <div class="rounded-3xl border border-white/10 bg-[#0b0d14]/90 p-7">
+          <h3 class="mb-6 flex items-center gap-2 text-lg font-semibold"><span class="text-cyan-300">&lt;/&gt;</span> Tech Stack</h3>
+          <div class="space-y-6">
+            {techStack.map((g) => (
+              <div>
+                <p class="mb-3 text-xs uppercase tracking-[0.2em] text-slate-400">{g.group}</p>
+                <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  {g.items.map((it) => (
+                    <div class="group flex flex-col items-center gap-2 rounded-2xl border border-white/5 bg-white/3 p-3 text-center transition hover:-translate-y-1 hover:border-white/20">
+                      <StackIcon icon={it.icon} initials={it.initials} color={it.color} />
+                      <span class="text-xs text-slate-300 group-hover:text-white">{it.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Creative -->
+        <div class="rounded-3xl border border-white/10 bg-[#0b0d14]/90 p-7">
+          <h3 class="mb-6 flex items-center gap-2 text-lg font-semibold"><span class="text-fuchsia-300">✦</span> Creative</h3>
+          <div class="space-y-3">
+            {creative.map((it) => (
+              <div class="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/3 p-3 transition hover:translate-x-1 hover:border-white/20">
+                <StackIcon icon={it.icon} initials={it.initials} color={it.color} size={24} />
+                <div>
+                  <p class="font-semibold">{it.name}</p>
+                  <p class="text-sm text-slate-400">{it.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+       <!-- ================= PROYEK ================= -->
+    <section id="proyek" class="reveal mx-auto max-w-6xl scroll-mt-24 px-5 py-24">
+      <p class="mb-2 text-xs uppercase tracking-[0.3em] text-cyan-300">Karya</p>
+      <h2 class="mb-10 text-3xl font-bold md:text-4xl">Proyek</h2>
+      <ProjectCards />
+    </section>
+
+    <!-- ================= AWARDS ================= -->
+    <section id="awards" class="reveal mx-auto max-w-6xl scroll-mt-24 px-5 py-24">
+      <p class="mb-2 text-xs uppercase tracking-[0.3em] text-cyan-300">Pencapaian</p>
+      <h2 class="mb-10 text-3xl font-bold md:text-4xl">Awards</h2>
+      <ol class="relative space-y-6 border-l border-white/10 pl-8">
+        {awards.map((a) => (
+          <li class="relative">
+            <span class="absolute -left-11.25 top-5 grid h-8 w-8 place-items-center rounded-full bg-amber-400 text-sm shadow-lg shadow-amber-400/30">🏆</span>
+            <div class="rounded-3xl border border-white/10 bg-[#0b0d14]/90 p-6 transition hover:border-amber-400/40">
+              <div class="mb-2 flex flex-wrap items-center gap-3">
+                <span class="rounded-full bg-amber-400/15 px-3 py-0.5 text-xs font-semibold text-amber-300">{a.year}</span>
+                <span class="text-sm text-slate-400">{a.issuer}</span>
+              </div>
+              <h3 class="mb-2 text-lg font-semibold">{a.title}</h3>
+              <p class="text-sm text-slate-400">{a.description}</p>
+              {a.link && <a href={a.link} target="_blank" rel="noopener" class="mt-4 inline-block text-sm text-amber-300 underline-offset-4 hover:underline">Lihat sertifikat ↗</a>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <!-- ================= KONTAK ================= -->
+    <section id="kontak" class="reveal mx-auto max-w-6xl scroll-mt-24 px-5 py-28 text-center">
+      <h2 class="mb-4 text-4xl font-bold md:text-6xl">Mari Berkolaborasi</h2>
+      <p class="mb-10 text-slate-300">Terbuka untuk kerja sama, freelance, atau sekadar ngobrol.</p>
+      <a href={`mailto:${profile.email}`} class="inline-block rounded-full bg-white px-8 py-4 font-semibold text-slate-950 transition hover:scale-105">{profile.email}</a>
+      <div class="mt-8 flex justify-center gap-4">
+        <a href={profile.github} target="_blank" class="transition hover:-translate-y-1" aria-label="GitHub"><StackIcon icon="github" size={22} /></a>
+        <a href={profile.linkedin} target="_blank" class="grid transition hover:-translate-y-1" aria-label="LinkedIn"><StackIcon initials="in" color="#0A66C2" size={22} /></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/5 py-8 text-center text-xs text-slate-500">
+    © {new Date().getFullYear()} {profile.nama} · AR oleh MindAR &amp; Three.js · Logo oleh Simple Icons
+  </footer>
 </Layout>
+
+<script>
+  import QRCode from "qrcode";
+
+  // QR menuju halaman AR (alamatnya otomatis mengikuti domain website)
+  const qr = document.getElementById("qr") as HTMLCanvasElement;
+  QRCode.toCanvas(qr, `${location.origin}/ar`, { margin: 1, width: 224, color: { dark: "#0b1026", light: "#ffffff" } });
+
+  // Menu HP
+  const menuBtn = document.getElementById("menu-btn") as HTMLButtonElement;
+  const mobileMenu = document.getElementById("mobile-menu") as HTMLElement;
+  const toggleMenu = (open: boolean) => {
+    mobileMenu.classList.toggle("hidden", !open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+  };
+  menuBtn.addEventListener("click", () => toggleMenu(mobileMenu.classList.contains("hidden")));
+  mobileMenu.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => toggleMenu(false)));
+
+  // Tandai menu aktif sesuai bagian yang sedang dilihat
+  const navLinks = document.querySelectorAll<HTMLAnchorElement>("[data-nav]");
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      navLinks.forEach((l) => l.classList.toggle("text-cyan-300", l.hash === `#${en.target.id}`));
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main > section[id]").forEach((s) => spy.observe(s));
+
+  // Kartu miring mengikuti kursor
+  const card = document.getElementById("card") as HTMLElement;
+  card.addEventListener("pointermove", (e: PointerEvent) => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    card.style.setProperty("--ry", `${(x - 0.5) * 14}deg`);
+    card.style.setProperty("--rx", `${(0.5 - y) * 14}deg`);
+    card.style.setProperty("--gx", `${x * 100}%`);
+    card.style.setProperty("--gy", `${y * 100}%`);
+  });
+  card.addEventListener("pointerleave", () => {
+    card.style.setProperty("--rx", "0deg");
+    card.style.setProperty("--ry", "0deg");
+  });
+
+  // Animasi muncul saat di-scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((en) => en.isIntersecting && en.target.classList.add("show"));
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+</script>

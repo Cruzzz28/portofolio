@@ -1,0 +1,509 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { profile } from "../data/profile.js";
+import foto from "../assets/foto.png";
+---
+
+<Layout title={`AR | ${profile.nama}`}>
+  <div id="ar" class="fixed inset-0 overflow-hidden" data-photo={foto.src}></div>
+
+  <!-- Layar awal -->
+  <section id="start" class="grid-bg fixed inset-0 z-30 flex flex-col items-center justify-center bg-[#0b1026] px-6 text-center">
+    <p class="mb-3 text-xs uppercase tracking-[0.4em] text-cyan-300">Portofolio AR</p>
+    <h1 class="mb-3 text-3xl font-bold md:text-5xl">{profile.nama}</h1>
+    <p class="mb-8 max-w-sm text-slate-300">Arahkan kamera ke kartu nama saya. Hologram dan proyek saya akan muncul di atasnya.</p>
+    <img src="/ar/kartu-ar.png" alt="Kartu nama AR" class="mb-8 w-64 rounded-xl shadow-2xl shadow-cyan-500/20 md:w-80" />
+    <button id="start-btn" class="mb-4 rounded-full bg-white px-8 py-3.5 font-semibold text-slate-950 transition hover:scale-105">📷 Mulai Kamera</button>
+    <p id="start-status" class="h-5 text-sm text-slate-400"></p>
+    <div class="mt-6 flex gap-5 text-sm text-slate-400">
+      <a href="/ar/kartu-ar.png" download="kartu-ar-satria.png" class="underline-offset-4 hover:text-white hover:underline">Unduh kartu</a>
+      <a href="/" class="underline-offset-4 hover:text-white hover:underline">← Kembali ke portofolio</a>
+    </div>
+  </section>
+
+  <!-- Bingkai pemindai -->
+  <div id="scanning" class="pointer-events-none fixed inset-0 z-20 hidden items-center justify-center">
+    <div class="relative aspect-[7/4] w-[78vw] max-w-md">
+      <span class="absolute left-0 top-0 h-8 w-8 rounded-tl-xl border-l-4 border-t-4 border-cyan-300"></span>
+      <span class="absolute right-0 top-0 h-8 w-8 rounded-tr-xl border-r-4 border-t-4 border-cyan-300"></span>
+      <span class="absolute bottom-0 left-0 h-8 w-8 rounded-bl-xl border-b-4 border-l-4 border-cyan-300"></span>
+      <span class="absolute bottom-0 right-0 h-8 w-8 rounded-br-xl border-b-4 border-r-4 border-cyan-300"></span>
+      <div class="scanline absolute inset-x-2 h-10"></div>
+    </div>
+    <p class="absolute bottom-24 rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur">Arahkan kamera ke kartu nama</p>
+  </div>
+
+  <!-- Petunjuk saat kartu terdeteksi -->
+  <p id="found-hint" class="pointer-events-none fixed bottom-8 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur">
+    ✨ Ketuk hologram, panel, atau tombol
+  </p>
+
+  <!-- Tombol keluar -->
+  <a href="/" id="exit" class="fixed left-4 top-4 z-20 hidden rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur">✕ Keluar</a>
+
+  <!-- Lembar info -->
+  <aside id="sheet" class="fixed inset-x-0 bottom-0 z-40 max-h-[70vh] translate-y-full overflow-y-auto rounded-t-3xl bg-[#fbfaf7] p-6 pb-10 text-slate-900 shadow-2xl transition-[translate] duration-500 md:inset-x-auto md:right-6 md:bottom-6 md:w-96 md:rounded-3xl">
+    <button id="sheet-close" class="absolute right-5 top-5 rounded-full bg-slate-900 px-3 py-1 text-sm text-white">✕</button>
+    <div id="sheet-body"></div>
+  </aside>
+</Layout>
+
+<script>
+  import * as THREE from "three";
+  import { profile } from "../data/profile.js";
+  import { projects, skills } from "../data/projects.js";
+
+  const container = document.getElementById("ar") as HTMLDivElement;
+  const startScreen = document.getElementById("start") as HTMLElement;
+  const startBtn = document.getElementById("start-btn") as HTMLButtonElement;
+  const startStatus = document.getElementById("start-status") as HTMLElement;
+  const scanning = document.getElementById("scanning") as HTMLElement;
+  const foundHint = document.getElementById("found-hint") as HTMLElement;
+  const exitBtn = document.getElementById("exit") as HTMLElement;
+  const sheet = document.getElementById("sheet") as HTMLElement;
+  const sheetBody = document.getElementById("sheet-body") as HTMLElement;
+
+  // ================= LEMBAR INFO =================
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  function openSheet(html: string) {
+    sheetBody.innerHTML = html;
+    sheet.style.translate = "0 0";
+  }
+  const closeSheet = () => (sheet.style.translate = "");
+  document.getElementById("sheet-close")!.addEventListener("click", closeSheet);
+
+  const SHEETS = {
+    tentang: () => `
+      <p class="mb-1 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-700">Tentang Saya</p>
+      <h2 class="mb-1 text-2xl font-bold">${esc(profile.nama)}</h2>
+      <p class="mb-4 text-slate-500">${esc(profile.peran)} · ${esc(profile.lokasi)}</p>
+      <p class="mb-5 leading-relaxed text-slate-700">${esc(profile.tentang)}</p>
+      <div class="flex flex-wrap gap-2">${skills.map((s) => `<span class="rounded-full bg-slate-100 px-3 py-1 text-sm">${esc(s)}</span>`).join("")}</div>`,
+    proyek: (i: number) => {
+      const p = projects[i];
+      return `
+      <p class="mb-1 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-700">Proyek 0${i + 1}</p>
+      <h2 class="mb-3 text-2xl font-bold">${esc(p.title)}</h2>
+      <p class="mb-4 leading-relaxed text-slate-700">${esc(p.description)}</p>
+      <div class="mb-6 flex flex-wrap gap-2">${p.tech.map((t) => `<span class="rounded-md bg-slate-100 px-2 py-1 text-xs">${esc(t)}</span>`).join("")}</div>
+      <a href="${esc(p.link)}" target="_blank" rel="noopener" class="block rounded-2xl bg-slate-900 py-3 text-center font-semibold text-white">Lihat Proyek ↗</a>`;
+    },
+  };
+
+  // ================= TEKSTUR DARI CANVAS =================
+  function canvasTexture(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    draw(cv.getContext("2d")!);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }
+  function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    c.beginPath();
+    c.roundRect(x, y, w, h, r);
+  }
+  function wrap(c: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lh: number, maxLines = 3) {
+    const words = text.split(" ");
+    let line = "", n = 0;
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (c.measureText(test).width > maxW && line) {
+        c.fillText(line, x, y + n * lh);
+        line = w;
+        if (++n >= maxLines) return;
+      } else line = test;
+    }
+    c.fillText(line, x, y + n * lh);
+  }
+  const FONT = '"Space Grotesk", system-ui, sans-serif';
+
+  // ================= ADEGAN 3D (satuan: lebar kartu = 1) =================
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.domElement.style.position = "absolute";
+  container.appendChild(renderer.domElement);
+  scene.add(new THREE.HemisphereLight("#ffffff", "#334155", 2));
+
+  const anchor = new THREE.Group();
+  anchor.matrixAutoUpdate = false;
+  anchor.visible = false;
+  scene.add(anchor);
+
+  // Semua konten berdiri tegak dari permukaan kartu (sumbu z kartu = "atas")
+  const content = new THREE.Group();
+  content.scale.setScalar(0.8); // sedikit diperkecil agar muat di layar HP
+  content.position.x = 0.04;
+  anchor.add(content);
+
+  const RETICLE = new THREE.Vector3(0.271, 0, 0); // pusat lingkaran target di kartu
+  const CYAN = new THREE.Color("#22d3ee");
+  const tappables: THREE.Object3D[] = [];
+  const tap = (o: THREE.Object3D, action: () => void) => {
+    o.userData.tap = action;
+    tappables.push(o);
+  };
+
+  // --- Portal cahaya ---
+  const portal = new THREE.Group();
+  portal.position.copy(RETICLE);
+  content.add(portal);
+  const glowMat = (color: THREE.ColorRepresentation, opacity = 0.9) =>
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const rings: THREE.Mesh[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = new THREE.Mesh(new THREE.RingGeometry(0.1 + i * 0.012, 0.106 + i * 0.012, 64), glowMat(i % 2 ? "#a78bfa" : "#22d3ee", 0.8));
+    r.userData.phase = i / 4;
+    portal.add(r);
+    rings.push(r);
+  }
+  const beamMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: { uTime: { value: 0 }, uColor: { value: CYAN } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `uniform float uTime; uniform vec3 uColor; varying vec2 vUv;
+      void main(){ float a = (1.0 - vUv.y) * 0.35 * (0.8 + 0.2 * sin(uTime * 6.0 + vUv.y * 20.0));
+      gl_FragColor = vec4(uColor, a); }`,
+  });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.45, 48, 1, true), beamMat);
+  beam.rotation.x = Math.PI / 2;
+  beam.position.z = 0.225;
+  portal.add(beam);
+
+  // --- Hologram foto ---
+  const holoMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    uniforms: { uMap: { value: null as THREE.Texture | null }, uTime: { value: 0 }, uReveal: { value: 0 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `
+      uniform sampler2D uMap; uniform float uTime; uniform float uReveal; varying vec2 vUv;
+      void main(){
+        if (vUv.y > uReveal) discard;                       // muncul dari bawah ke atas
+        vec2 uv = vUv;
+        uv.x += sin(uv.y * 80.0 + uTime * 10.0) * 0.002;     // getaran halus
+        vec3 col = texture2D(uMap, uv).rgb;
+        float scan = 0.75 + 0.25 * sin(uv.y * 260.0 - uTime * 8.0);
+        vec3 holo = mix(col, vec3(0.35, 0.9, 1.0) * dot(col, vec3(0.33)), 0.35) * scan * 1.25;
+        float edge = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x) * smoothstep(0.0, 0.06, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+        float flicker = 0.92 + 0.08 * sin(uTime * 37.0);
+        float band = smoothstep(0.02, 0.0, abs(vUv.y - fract(uTime * 0.35))) * 0.6;
+        gl_FragColor = vec4(holo + vec3(0.4, 0.9, 1.0) * band, edge * 0.92 * flicker);
+      }`,
+  });
+  const HOLO_H = 0.42, HOLO_W = 0.32;
+  const holo = new THREE.Mesh(new THREE.PlaneGeometry(HOLO_W, HOLO_H), holoMat);
+  holo.rotation.x = Math.PI / 2; // berdiri tegak di atas kartu
+  holo.position.set(RETICLE.x, RETICLE.y, HOLO_H / 2 + 0.03);
+  content.add(holo);
+  tap(holo, () => openSheet(SHEETS.tentang()));
+
+  new THREE.TextureLoader().load(container.dataset.photo || "", (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    const img = t.image as HTMLImageElement;
+    const ia = img.width / img.height, pa = HOLO_W / HOLO_H;
+    if (ia > pa) { t.repeat.set(pa / ia, 1); t.offset.set((1 - t.repeat.x) / 2, 0); }
+    else { t.repeat.set(1, ia / pa); t.offset.set(0, (1 - t.repeat.y) / 2); }
+    holoMat.uniforms.uMap.value = t;
+  });
+
+  // --- Papan nama ---
+  function makeNameTag() {
+    const tex = canvasTexture(1024, 256, (c) => {
+      c.textAlign = "center";
+      c.shadowColor = "#22d3ee";
+      c.shadowBlur = 24;
+      c.fillStyle = "#ffffff";
+      c.font = `700 96px ${FONT}`;
+      c.fillText(profile.nama, 512, 110);
+      c.shadowBlur = 12;
+      c.fillStyle = "#67e8f9";
+      c.font = `500 52px ${FONT}`;
+      c.fillText(profile.peran, 512, 200);
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.14), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = Math.PI / 2;
+    m.position.set(RETICLE.x, RETICLE.y, HOLO_H + 0.13);
+    return m;
+  }
+
+  // --- Skill mengorbit ---
+  let nameTag: THREE.Mesh | null = null;
+  const orbit = new THREE.Group();
+  orbit.position.set(RETICLE.x, RETICLE.y, 0.2);
+  content.add(orbit);
+  function makeSkills() {
+    skills.forEach((s, i) => {
+      const tex = canvasTexture(320, 96, (c) => {
+        c.font = `600 44px ${FONT}`;
+        const w = Math.min(c.measureText(s).width + 56, 316);
+        roundRect(c, (320 - w) / 2, 8, w, 80, 40);
+        c.fillStyle = "rgba(15,23,42,0.85)";
+        c.fill();
+        c.lineWidth = 4;
+        c.strokeStyle = ["#22d3ee", "#a78bfa", "#f472b6"][i % 3];
+        c.stroke();
+        c.fillStyle = "#fff";
+        c.textAlign = "center";
+        c.fillText(s, 160, 62);
+      });
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      sp.scale.set(0.14, 0.042, 1);
+      const a = (i / skills.length) * Math.PI * 2;
+      sp.userData = { a, z: (i % 3) * 0.06 - 0.06 };
+      orbit.add(sp);
+    });
+  }
+
+  // --- Panel proyek melengkung ---
+  const panels: THREE.Mesh[] = [];
+  function makeProjects() {
+    const n = projects.length;
+    projects.forEach((p, i) => {
+      const tex = canvasTexture(640, 400, (c) => {
+        const g = c.createLinearGradient(0, 0, 640, 400);
+        g.addColorStop(0, "rgba(15,23,42,0.92)");
+        g.addColorStop(1, "rgba(30,27,75,0.92)");
+        roundRect(c, 6, 6, 628, 388, 36);
+        c.fillStyle = g;
+        c.fill();
+        c.lineWidth = 6;
+        c.strokeStyle = ["#22d3ee", "#a78bfa", "#f472b6", "#fbbf24"][i % 4];
+        c.stroke();
+        c.fillStyle = "rgba(255,255,255,0.35)";
+        c.font = `700 40px ${FONT}`;
+        c.fillText(`0${i + 1}`, 40, 72);
+        c.fillStyle = "#fff";
+        c.font = `700 46px ${FONT}`;
+        wrap(c, p.title, 40, 140, 560, 52, 2);
+        c.fillStyle = "#cbd5e1";
+        c.font = `400 28px ${FONT}`;
+        wrap(c, p.description, 40, 250, 560, 36, 2);
+        c.fillStyle = "#67e8f9";
+        c.font = `600 26px ${FONT}`;
+        c.fillText(p.tech.join(" · "), 40, 362);
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.1875), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+      // Susun melengkung di sisi kiri kartu, menghadap ke penonton
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const ang = -0.9 + t * 1.4;
+      m.position.set(-0.2 + Math.sin(ang) * 0.3, 0.05 + Math.cos(ang) * 0.12 - 0.12, 0.16 + (i % 2) * 0.12);
+      m.rotation.set(Math.PI / 2 - 0.25, -ang * 0.5, 0);
+      m.userData.baseZ = m.position.z;
+      m.userData.phase = i;
+      content.add(m);
+      panels.push(m);
+      tap(m, () => openSheet(SHEETS.proyek(i)));
+    });
+  }
+
+  // --- Tombol kontak 3D ---
+  function makeContacts() {
+    const items = [
+      { label: "✉ Email", url: `mailto:${profile.email}`, color: "#f472b6" },
+      { label: "GitHub", url: profile.github, color: "#a78bfa" },
+      { label: "LinkedIn", url: profile.linkedin, color: "#22d3ee" },
+    ];
+    items.forEach((it, i) => {
+      const tex = canvasTexture(360, 120, (c) => {
+        roundRect(c, 6, 6, 348, 108, 54);
+        c.fillStyle = it.color;
+        c.fill();
+        c.fillStyle = "#0b1026";
+        c.font = `700 46px ${FONT}`;
+        c.textAlign = "center";
+        c.fillText(it.label, 180, 76);
+      });
+      const b = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.05), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }));
+      b.rotation.x = Math.PI / 2 - 0.4;
+      b.position.set(-0.17 + i * 0.17, -0.34, 0.05);
+      b.userData.phase = i;
+      content.add(b);
+      tap(b, () => window.open(it.url, "_blank"));
+    });
+  }
+
+  document.fonts.ready.then(() => {
+    nameTag = makeNameTag();
+    content.add(nameTag);
+    makeSkills();
+    makeProjects();
+    makeContacts();
+  });
+
+  // ================= MINDAR (pelacakan kartu) =================
+  const video = document.createElement("video");
+  video.setAttribute("autoplay", "");
+  video.setAttribute("muted", "");
+  video.setAttribute("playsinline", "");
+  video.muted = true;
+  Object.assign(video.style, { position: "absolute", top: "0", left: "0", objectFit: "cover", maxWidth: "none", maxHeight: "none" }); // abaikan batas lebar bawaan Tailwind
+  container.prepend(video); // video di lapisan paling bawah, kanvas 3D di atasnya
+
+  let controller: any = null;
+  let postMatrix = new THREE.Matrix4();
+  let found = false;
+  let foundAt = 0;
+
+  async function start() {
+    startBtn.disabled = true;
+    startStatus.textContent = "Meminta izin kamera…";
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
+      video.srcObject = stream;
+      await new Promise((r) => video.addEventListener("loadedmetadata", r, { once: true }));
+      await video.play();
+      // MindAR membaca ukuran dari atribut width/height video
+      video.setAttribute("width", String(video.videoWidth));
+      video.setAttribute("height", String(video.videoHeight));
+    } catch (err) {
+      startStatus.textContent = "Kamera tidak bisa dibuka. Izinkan akses kamera di browser.";
+      startBtn.disabled = false;
+      return;
+    }
+
+    startStatus.textContent = "Memuat mesin AR…";
+    try {
+      await startTracking();
+    } catch (err) {
+      console.error(err);
+      startStatus.textContent = "Mesin AR gagal dimuat. Coba muat ulang halaman.";
+      startBtn.disabled = false;
+    }
+  }
+
+  async function startTracking() {
+    const mindarUrl = "/vendor/mindar/mindar-image.prod.js";
+    const { Controller } = await import(/* @vite-ignore */ mindarUrl);
+    controller = new Controller({
+      inputWidth: video.videoWidth,
+      inputHeight: video.videoHeight,
+      maxTrack: 1,
+      filterMinCF: 0.0001, // mengurangi getaran
+      filterBeta: 0.001,
+      warmupTolerance: 3,
+      missTolerance: 8,
+      onUpdate: (data: { type: string; worldMatrix: number[] | null }) => {
+        if (data.type !== "updateMatrix") return;
+        const visible = data.worldMatrix !== null;
+        if (visible) {
+          const m = new THREE.Matrix4();
+          m.fromArray(data.worldMatrix!);
+          anchor.matrix.copy(m.multiply(postMatrix));
+        }
+        if (visible !== found) {
+          found = visible;
+          anchor.visible = visible;
+          if (visible) foundAt = clock.getElapsed();
+          scanning.style.display = visible ? "none" : "flex";
+          foundHint.style.display = visible ? "block" : "none";
+          if (visible && navigator.vibrate) navigator.vibrate(30);
+        }
+      },
+    });
+
+    const { dimensions } = await controller.addImageTargets("/ar/kartu-ar.mind");
+    const [mw, mh] = dimensions[0];
+    // Ubah koordinat MindAR ke "lebar kartu = 1, titik tengah kartu = 0"
+    postMatrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(mw / 2, mw / 2 + (mh - mw) / 2, 0),
+      new THREE.Quaternion(),
+      new THREE.Vector3(mw, mw, mw),
+    );
+    resize();
+    startStatus.textContent = "Menyiapkan pelacak…";
+    await controller.dummyRun(video);
+    controller.processVideo(video);
+
+    startScreen.style.display = "none";
+    scanning.style.display = "flex";
+    exitBtn.style.display = "block";
+  }
+  startBtn.addEventListener("click", start);
+
+  // Samakan kamera 3D dengan kamera asli (diadaptasi dari MindAR)
+  function resize() {
+    const cw = container.clientWidth, ch = container.clientHeight;
+    renderer.setSize(cw, ch);
+    if (!controller || !video.videoWidth) return;
+    const videoRatio = video.videoWidth / video.videoHeight;
+    const containerRatio = cw / ch;
+    let vw: number, vh: number;
+    if (videoRatio > containerRatio) { vh = ch; vw = vh * videoRatio; }
+    else { vw = cw; vh = vw / videoRatio; }
+    Object.assign(video.style, { width: vw + "px", height: vh + "px", top: -(vh - ch) / 2 + "px", left: -(vw - cw) / 2 + "px" });
+
+    const proj = controller.getProjectionMatrix();
+    const displayH = videoRatio > containerRatio ? ch : (cw / controller.inputWidth) * controller.inputHeight;
+    const fovAdjust = ch / displayH;
+    camera.fov = (2 * Math.atan((1 / proj[5]) * fovAdjust) * 180) / Math.PI;
+    camera.near = proj[14] / (proj[10] - 1.0);
+    camera.far = proj[14] / (proj[10] + 1.0);
+    camera.aspect = cw / ch;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ================= KETUK OBJEK =================
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  renderer.domElement.addEventListener("click", (e) => {
+    if (!found) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    const hit = raycaster.intersectObjects(tappables, false)[0];
+    if (hit) hit.object.userData.tap();
+  });
+
+  // ================= ANIMASI =================
+  const clock = new THREE.Timer();
+  const ease = (x: number) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3);
+
+  function animate() {
+    clock.update();
+    const t = clock.getElapsed();
+    const since = t - foundAt; // waktu sejak kartu terdeteksi → animasi muncul
+
+    beamMat.uniforms.uTime.value = t;
+    holoMat.uniforms.uTime.value = t;
+    holoMat.uniforms.uReveal.value = ease((since - 0.3) / 1.2) * 1.001;
+
+    rings.forEach((r) => {
+      const k = (t * 0.5 + r.userData.phase) % 1;
+      r.position.z = k * 0.4;
+      r.scale.setScalar(1 - k * 0.35);
+      (r.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.9 * ease(since / 0.5);
+    });
+    beam.scale.y = ease(since / 0.6);
+
+    orbit.children.forEach((s) => {
+      const a = s.userData.a + t * 0.6;
+      s.position.set(Math.cos(a) * 0.26, Math.sin(a) * 0.12, s.userData.z + Math.sin(t * 1.5 + s.userData.a) * 0.01);
+    });
+    orbit.scale.setScalar(ease((since - 1.0) / 0.8));
+    nameTag?.scale.setScalar(ease((since - 1.2) / 0.5));
+
+    panels.forEach((p, i) => {
+      const k = ease((since - 1.2 - i * 0.15) / 0.6);
+      p.scale.setScalar(k);
+      p.position.z = p.userData.baseZ + Math.sin(t * 1.2 + p.userData.phase) * 0.012;
+    });
+    content.children.forEach((o) => {
+      if (o.userData.phase !== undefined && !panels.includes(o as THREE.Mesh)) o.scale.setScalar(ease((since - 1.8 - o.userData.phase * 0.1) / 0.5));
+    });
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+</script>

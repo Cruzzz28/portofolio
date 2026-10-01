@@ -1,0 +1,208 @@
+---
+// Foto elegan: scan reveal (hologram → warna), vinyet, tilt 3D, cahaya sorot, tepi menyala, dan sudut bidik HUD
+import { Image } from "astro:assets";
+import foto from "../assets/foto.png";
+import StackIcon from "./StackIcon.astro";
+import { profile } from "../data/profile.js";
+import { techStack, creative } from "../data/stack.js";
+
+// Ikon yang mengelilingi foto: ambil dari Tech Stack & Creative (maksimal 8)
+const orbiters = [...techStack.flatMap((g) => g.items), ...creative].slice(0, 8);
+---
+
+<div class="pf relative mx-auto aspect-4/5 w-60 md:w-full" data-pf>
+  <!-- Sudut bidik ala kamera AR -->
+  <span class="pf-corner pf-tl"></span>
+  <span class="pf-corner pf-tr"></span>
+  <span class="pf-corner pf-bl"></span>
+  <span class="pf-corner pf-br"></span>
+
+  <div class="pf-tilt absolute inset-0">
+    <div class="pf-card absolute inset-0 overflow-hidden rounded-3xl">
+      <!-- Foto berwarna (lapisan bawah) -->
+      <Image src={foto} alt={`Foto ${profile.nama}`} width={640} class="pf-img pf-color" />
+      <!-- Versi hologram (lapisan atas) yang tersapu saat reveal -->
+      <Image src={foto} alt="" width={640} class="pf-img pf-mono" aria-hidden="true" />
+      <div class="pf-tint pointer-events-none absolute inset-0"></div>
+
+      <!-- Garis pemindai -->
+      <div class="pf-scan pointer-events-none absolute inset-x-0"></div>
+
+      <!-- Vinyet: latar putih studio menyatu dengan tema gelap -->
+      <div class="pf-vignette pointer-events-none absolute inset-0"></div>
+      <!-- Cahaya sorot mengikuti kursor -->
+      <div class="pf-light pointer-events-none absolute inset-0"></div>
+
+      <span class="pf-chip absolute bottom-4 left-4 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-xs font-medium text-white backdrop-blur-md">
+        <span class="mr-1 text-emerald-400">●</span> Open to work
+      </span>
+    </div>
+    <!-- Tepi yang menyala di dekat kursor -->
+    <div class="pf-glow pointer-events-none absolute inset-0 rounded-3xl"></div>
+  </div>
+
+  <!-- Ikon yang mengorbit (lewat di depan & di belakang foto) -->
+  {orbiters.map((o) => (
+    <div class="pf-orbiter pointer-events-none absolute left-1/2 top-1/2" title={o.name}>
+      <StackIcon icon={o.icon} initials={o.initials} color={o.color} size={20} />
+    </div>
+  ))}
+</div>
+
+<style>
+  .pf { perspective: 1100px; --x: 50%; --y: 0%; --light: 0; }
+
+  .pf-tilt {
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 1;
+  }
+  .pf-orbiter { will-change: transform, opacity, filter; }
+  /* Ikon memakai latar gelap supaya tetap jelas saat lewat di depan foto yang terang */
+  .pf-orbiter > :global(span) { background-color: rgb(11 13 20 / 0.85) !important; backdrop-filter: blur(6px); }
+  .pf-card {
+    box-shadow: 0 40px 80px -30px rgb(0 0 0 / 0.9), 0 0 0 1px rgb(255 255 255 / 0.08);
+    background: #0b0d14;
+  }
+
+  .pf-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* Sedikit diredam supaya latar putih tidak menyilaukan di tema gelap */
+  .pf-color { filter: brightness(0.92) contrast(1.05) saturate(1.05); }
+
+  /* Lapisan hologram: hitam-putih + rona cyan, lalu tersapu dari atas ke bawah */
+  .pf-mono { filter: grayscale(1) contrast(1.25) brightness(0.7); }
+  .pf-mono, .pf-tint {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 1.8s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .pf-tint { background: linear-gradient(180deg, rgb(34 211 238 / 0.35), rgb(124 58 237 / 0.3)); mix-blend-mode: color; }
+  .pf.is-in .pf-mono, .pf.is-in .pf-tint { clip-path: inset(100% 0 0 0); }
+
+  .pf-scan {
+    top: 0;
+    height: 3px;
+    background: #67e8f9;
+    box-shadow: 0 0 18px 4px rgb(34 211 238 / 0.7), 0 0 60px 10px rgb(34 211 238 / 0.25);
+    opacity: 0;
+  }
+  .pf.is-in .pf-scan { animation: pf-scan 1.8s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+  @keyframes pf-scan {
+    0% { top: 0%; opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .pf-vignette {
+    background:
+      radial-gradient(ellipse 85% 75% at 50% 45%, transparent 45%, rgb(5 6 10 / 0.55) 100%),
+      linear-gradient(180deg, transparent 60%, rgb(5 6 10 / 0.55) 100%);
+  }
+  .pf-light {
+    background: radial-gradient(420px circle at var(--x) var(--y), rgb(255 255 255 / 0.18), transparent 45%);
+    mix-blend-mode: soft-light;
+    opacity: var(--light);
+    transition: opacity 0.4s;
+  }
+
+  /* Tepi menyala (hanya garis bingkai yang diwarnai) */
+  .pf-glow {
+    padding: 1.5px;
+    background: radial-gradient(260px circle at var(--x) var(--y), rgb(103 232 249 / 0.95), rgb(167 139 250 / 0.5) 30%, transparent 60%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: calc(0.35 + var(--light) * 0.65);
+    transition: opacity 0.4s;
+  }
+
+  /* Sudut bidik HUD */
+  .pf-corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    color: #22d3ee; /* warna garis sudut (dipakai oleh border "solid") */
+    opacity: 0.8;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s;
+    z-index: 2;
+  }
+  .pf-tl { top: -12px; left: -12px; border-top: 2px solid; border-left: 2px solid; border-top-left-radius: 10px; }
+  .pf-tr { top: -12px; right: -12px; border-top: 2px solid; border-right: 2px solid; border-top-right-radius: 10px; }
+  .pf-bl { bottom: -12px; left: -12px; border-bottom: 2px solid; border-left: 2px solid; border-bottom-left-radius: 10px; }
+  .pf-br { bottom: -12px; right: -12px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: 10px; }
+  .pf:hover .pf-tl { transform: translate(-6px, -6px); opacity: 1; }
+  .pf:hover .pf-tr { transform: translate(6px, -6px); opacity: 1; }
+  .pf:hover .pf-bl { transform: translate(-6px, 6px); opacity: 1; }
+  .pf:hover .pf-br { transform: translate(6px, 6px); opacity: 1; }
+  .pf:hover .pf-img { transform: scale(1.04); }
+
+  .pf-chip { transform: translateZ(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pf-mono, .pf-tint { display: none; }
+    .pf-scan { display: none; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-pf]").forEach((pf) => {
+    // Scan reveal sekali saat foto pertama kali terlihat
+    const io = new IntersectionObserver(([en]) => {
+      if (en.isIntersecting) {
+        pf.classList.add("is-in");
+        io.disconnect();
+      }
+    }, { threshold: 0.45 });
+    io.observe(pf);
+
+    // Tilt + cahaya sorot mengikuti kursor
+    pf.addEventListener("pointermove", (e: PointerEvent) => {
+      const r = pf.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      pf.style.setProperty("--x", `${x * 100}%`);
+      pf.style.setProperty("--y", `${y * 100}%`);
+      pf.style.setProperty("--light", "1");
+      pf.style.setProperty("--ry", `${(x - 0.5) * 12}deg`);
+      pf.style.setProperty("--rx", `${(0.5 - y) * 12}deg`);
+    });
+    pf.addEventListener("pointerleave", () => {
+      pf.style.setProperty("--light", "0");
+      pf.style.setProperty("--rx", "0deg");
+      pf.style.setProperty("--ry", "0deg");
+    });
+
+    // Orbit 3D ikon: di depan foto (jelas) atau di belakang (kecil & buram)
+    const orbiters = Array.from(pf.querySelectorAll<HTMLElement>(".pf-orbiter"));
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let visible = false;
+    new IntersectionObserver(([en]) => (visible = en.isIntersecting)).observe(pf);
+    const start = performance.now();
+
+    function orbit(now: number) {
+      requestAnimationFrame(orbit);
+      if (!visible) return;
+      const t = reduce ? 0 : (now - start) / 1000;
+      const w = pf.clientWidth, h = pf.clientHeight;
+      orbiters.forEach((el, i) => {
+        const a = t * 0.4 + (i / orbiters.length) * Math.PI * 2;
+        const depth = Math.sin(a); // 1 = paling depan, -1 = paling belakang
+        const x = Math.cos(a) * w * 0.66;
+        // Jalur orbit di area badan, tidak menutupi wajah
+        const y = Math.sin(a) * h * 0.07 + (i % 2 ? h * 0.24 : h * 0.06);
+        const s = 0.72 + (depth + 1) * 0.18;
+        el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${s})`;
+        el.style.zIndex = depth > 0 ? "3" : "0";
+        el.style.opacity = String(0.4 + (depth + 1) * 0.3);
+        el.style.filter = depth > 0 ? "none" : `blur(${(-depth * 2).toFixed(1)}px)`;
+      });
+    }
+    requestAnimationFrame(orbit);
+  });
+</script>
