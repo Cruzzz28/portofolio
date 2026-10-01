@@ -2,7 +2,31 @@
 import "../styles/global.css";
 import { profile } from "../data/profile.js";
 
-const { title = `Portofolio | ${profile.nama}` } = Astro.props;
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = `${profile.nama} — ${profile.peran} | Portofolio`,
+  description = `Portofolio resmi ${profile.nama}, ${profile.peran} dari ${profile.lokasi}. Lihat proyek, keahlian, penghargaan, dan kartu nama AR interaktif.`,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL("/ar/kartu-ar.png", Astro.site);
+
+// Data terstruktur: memberi tahu Google bahwa ini profil resmi seseorang
+const personSchema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: profile.nama,
+  jobTitle: profile.peran,
+  url: Astro.site?.toString(),
+  image: ogImage.toString(),
+  email: `mailto:${profile.email}`,
+  address: { "@type": "PostalAddress", addressCountry: profile.lokasi },
+  sameAs: [profile.github, profile.linkedin],
+};
 ---
 
 <!doctype html>
@@ -10,12 +34,36 @@ const { title = `Portofolio | ${profile.nama}` } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content={`Portofolio ${profile.nama} — ${profile.peran}. Scan kartu nama untuk versi AR.`} />
-    <meta name="theme-color" content="#0b1026" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="author" content={profile.nama} />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#05060a" />
+
+    <!-- Verifikasi Google Search Console: tempel kode dari Google di sini (lihat panduan) -->
+    <!-- <meta name="google-site-verification" content="KODE_DARI_GOOGLE" /> -->
+
+    <!-- Tampilan saat link dibagikan (WhatsApp, LinkedIn, Facebook, X) -->
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content={`${profile.nama} — Portofolio`} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="800" />
+    <meta property="og:locale" content="id_ID" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(personSchema)} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
-    <title>{title}</title>
   </head>
   <body class="font-sans text-slate-100 antialiased">
     <slot />
